@@ -438,7 +438,8 @@ wss.on('connection', (ws) => {
 
 // HTTP API endpoints
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static('.')); // Serve all files in current directory (dashboard.html, etc)
+app.use(express.static(path.join(__dirname, '.'))); // Serve static files from root
 
 app.get('/api/portfolio', (req, res) => {
   res.json(getPortfolioMetrics());
