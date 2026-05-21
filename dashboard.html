@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS v2 - Trading Terminal</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #001100;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+}
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.1), rgba(0,0,0,.1) 1px, transparent 1px, transparent 2px);
+  z-index: 9999;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  grid-template-rows: 50px 1fr 250px;
+  height: 100vh;
+  gap: 1px;
+  background: #003300;
+  padding: 1px;
+}
+
+.header {
+  grid-column: 1 / -1;
+  background: #001100;
+  border-bottom: 1px solid #003300;
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.header h1 {
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 15px rgba(0,255,0,.5);
+}
+
+.status-bar {
+  display: flex;
+  gap: 20px;
+  font-size: 10px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ff00;
+  box-shadow: 0 0 8px #00ff00;
+}
+
+.dot.red {
+  background: #ff3300;
+  box-shadow: 0 0 8px #ff3300;
+}
+
+.panel {
+  background: #0a1a0a;
+  border: 1px solid #003300;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-title {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #00ff00;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #003300;
+  padding-bottom: 6px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 0;
+  font-size: 11px;
+  padding: 2px 0;
+}
+
+.stat-label {
+  color: #00aa00;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  color: #00ff00;
+  font-weight: 900;
+  text-shadow: 0 0 8px rgba(0,255,0,.3);
+}
+
+.stat-value.red {
+  color: #ff6600;
+}
+
+.position-item {
+  background: rgba(0,255,0,.02);
+  border: 1px solid #003300;
+  padding: 6px;
+  margin: 4px 0;
+  border-radius: 2px;
+  font-size: 9px;
+}
+
+.position-header {
+  font-weight: bold;
+  color: #00ff00;
+  margin-bottom: 2px;
+}
+
+.position-detail {
+  color: #00aa00;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+#portfolio {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#market {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#trades {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.trade-item {
+  background: #0a1a0a;
+  border: 1px solid #003300;
+  padding: 8px;
+  margin: 2px 0;
+  border-radius: 2px;
+  font-size: 9px;
+  display: grid;
+  grid-template-columns: 60px 100px 80px 100px 80px;
+  gap: 6px;
+  align-items: center;
+  border-left: 3px solid #00aa00;
+}
+
+.trade-item.sell {
+  border-left-color: #ff6600;
+}
+
+.trade-item.profit {
+  background: rgba(0, 255, 0, 0.05);
+  border-left-color: #00ff00;
+}
+
+.trade-item.loss {
+  background: rgba(255, 102, 0, 0.05);
+  border-left-color: #ff6600;
+}
+
+.trade-time {
+  color: #00aa00;
+  font-size: 8px;
+  font-weight: bold;
+}
+
+.trade-action {
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.trade-details {
+  color: #00aa00;
+  font-size: 8px;
+}
+
+.trade-price {
+  text-align: center;
+  color: #00aa00;
+  font-size: 9px;
+}
+
+.trade-pnl {
+  text-align: right;
+  font-weight: bold;
+  color: #ff6600;
+  font-size: 9px;
+}
+
+.trade-pnl.profit {
+  color: #00ff00;
+}
+
+.trade-pnl.loss {
+  color: #ff6600;
+}
+
+.trades-scroll {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #001100;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #003300;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #004400;
+}
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<div class="container">
+  <!-- HEADER -->
+  <div class="header">
+    <h1>ATLAS v2 TRADING TERMINAL</h1>
+    <div class="status-bar">
+      <div class="status-indicator">
+        <div class="dot" id="finnhub-dot"></div>
+        <span id="finnhub-status">FINNHUB: CONNECTING</span>
+      </div>
+      <div class="status-indicator">
+        <span>UPTIME: <span id="uptime">0s</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTFOLIO PANEL -->
+  <div class="panel" id="portfolio">
+    <div class="panel-title">PORTFOLIO</div>
+    
+    <div class="stat-row">
+      <span class="stat-label">Cash</span>
+      <span class="stat-value" id="cash">$1,000.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Total Value</span>
+      <span class="stat-value" id="total-value">$1,000.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Realized P&L</span>
+      <span class="stat-value" id="realized-pnl">+$0.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Unrealized P&L</span>
+      <span class="stat-value" id="unrealized-pnl">+$0.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Total P&L</span>
+      <span class="stat-value" id="total-pnl">+$0.00</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Return %</span>
+      <span class="stat-value" id="return-pct">+0.00%</span>
+    </div>
+
+    <div style="margin-top: 12px; border-top: 1px solid #003300; padding-top: 8px;">
+      <div class="panel-title" style="margin:0 0 6px 0">POSITIONS</div>
+      <div id="positions-list" style="font-size:8px; color:#00aa00">No positions</div>
+    </div>
+
+    <div style="margin-top: 12px; border-top: 1px solid #003300; padding-top: 8px;">
+      <div class="panel-title" style="margin:0 0 6px 0">STATS</div>
+      <div class="stat-row">
+        <span class="stat-label">Total Trades</span>
+        <span class="stat-value" id="total-trades">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Wins / Losses</span>
+        <span class="stat-value" id="win-loss">0 / 0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Win Rate</span>
+        <span class="stat-value" id="win-rate">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE DATA PANEL -->
+  <div class="panel" id="market">
+    <div class="panel-title">LIVE DATA & ACTIVITY</div>
+    <div id="market-list" style="flex:1; overflow-y:auto; font-size:9px">
+      <div style="color:#00aa00">Initializing...</div>
+    </div>
+  </div>
+
+  <!-- TRADE LOG PANEL -->
+  <div class="panel" id="trades">
+    <div class="panel-title">LIVE TRADE LOG</div>
+    <div class="trades-scroll" id="trade-log">
+      <div style="color:#00aa00; font-size:8px">Waiting for trades...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WS_URL = `ws://${window.location.hostname}:3000`;
+let ws = null;
+let startTime = Date.now();
+let lastUpdate = {};
+
+function connectWebSocket() {
+  ws = new WebSocket(WS_URL);
+  
+  ws.onopen = () => {
+    console.log('[WS] Connected');
+    document.getElementById('finnhub-status').textContent = 'FINNHUB: CONNECTING';
+  };
+  
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      
+      if (msg.type === 'initial_data' || msg.type === 'portfolio_update') {
+        updatePortfolio(msg);
+        updateStats(msg.stats);
+        updatePositions(msg.positions);
+      }
+      
+      if (msg.type === 'new_trade') {
+        addTradeToLog(msg.trade);
+      }
+      
+      if (msg.type === 'status') {
+        updateStatus(msg.status);
+      }
+    } catch (e) {
+      console.error('Parse error:', e);
+    }
+  };
+  
+  ws.onerror = (err) => {
+    console.error('[WS] Error:', err);
+    document.getElementById('finnhub-dot').classList.add('red');
+  };
+  
+  ws.onclose = () => {
+    console.log('[WS] Disconnected');
+    document.getElementById('finnhub-dot').classList.add('red');
+    setTimeout(connectWebSocket, 3000);
+  };
+}
+
+function updatePortfolio(data) {
+  document.getElementById('cash').textContent = '$' + data.cash;
+  document.getElementById('total-value').textContent = '$' + data.totalValue;
+  
+  const realized = parseFloat(data.realizedPnL);
+  const unrealized = parseFloat(data.unrealizedPnL);
+  const total = parseFloat(data.totalPnL);
+  
+  const realizedEl = document.getElementById('realized-pnl');
+  realizedEl.textContent = (realized >= 0 ? '+' : '') + data.realizedPnL;
+  realizedEl.className = 'stat-value ' + (realized >= 0 ? '' : 'red');
+  
+  const unrealizedEl = document.getElementById('unrealized-pnl');
+  unrealizedEl.textContent = (unrealized >= 0 ? '+' : '') + data.unrealizedPnL;
+  unrealizedEl.className = 'stat-value ' + (unrealized >= 0 ? '' : 'red');
+  
+  const totalEl = document.getElementById('total-pnl');
+  totalEl.textContent = (total >= 0 ? '+' : '') + data.totalPnL;
+  totalEl.className = 'stat-value ' + (total >= 0 ? '' : 'red');
+  
+  const ret = parseFloat(data.return);
+  const retEl = document.getElementById('return-pct');
+  retEl.textContent = (ret >= 0 ? '+' : '') + data.return + '%';
+  retEl.className = 'stat-value ' + (ret >= 0 ? '' : 'red');
+}
+
+function updateStats(stats) {
+  if (!stats) return;
+  document.getElementById('total-trades').textContent = stats.totalTrades || 0;
+  document.getElementById('win-loss').textContent = `${stats.wins || 0} / ${stats.losses || 0}`;
+  document.getElementById('win-rate').textContent = `${stats.winRate || 0}%`;
+}
+
+function updatePositions(positions) {
+  const list = document.getElementById('positions-list');
+  if (!positions || positions.length === 0) {
+    list.innerHTML = '<div style="color:#00aa00; font-size:9px">No positions</div>';
+    return;
+  }
+  
+  list.innerHTML = positions.map(p => `
+    <div class="position-item">
+      <div class="position-header">${p.symbol}: ${p.qty} @ $${p.entryPrice}</div>
+      <div class="position-detail">Current: $${p.currentPrice} | P&L: $${p.unrealizedPnL} (${p.unrealizedReturn}%)</div>
+    </div>
+  `).join('');
+}
+
+function addTradeToLog(trade) {
+  const log = document.getElementById('trade-log');
+  const time = new Date(trade.timestamp).toLocaleTimeString();
+  const isSell = trade.type === 'SELL';
+  
+  let pnlText = '';
+  let pnlClass = '';
+  let statusIcon = '';
+  let reasonText = '';
+  
+  if (isSell) {
+    const pnl = parseFloat(trade.pnl);
+    if (pnl > 0) {
+      pnlText = '+$' + pnl.toFixed(2);
+      pnlClass = 'profit';
+      statusIcon = '✓';
+    } else if (pnl < 0) {
+      pnlText = '-$' + Math.abs(pnl).toFixed(2);
+      pnlClass = 'loss';
+      statusIcon = '✗';
+    } else {
+      pnlText = '$0.00';
+      pnlClass = '';
+      statusIcon = '=';
+    }
+    reasonText = trade.reason ? trade.reason.substring(0, 3) : 'EXIT';
+  } else {
+    reasonText = 'ENTRY';
+  }
+  
+  const html = `<div class="trade-item ${isSell ? 'sell' : 'buy'} ${pnlClass}">
+    <div class="trade-time">${time}</div>
+    <div class="trade-action">${trade.type} ${trade.qty}x ${trade.symbol}</div>
+    <div class="trade-price">@$${trade.price.toFixed(2)}</div>
+    <div class="trade-details">${reasonText}</div>
+    <div class="trade-pnl ${pnlClass}">${statusIcon} ${pnlText}</div>
+  </div>`;
+  
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  log.insertBefore(temp.firstElementChild, log.firstChild);
+  
+  // Keep only last 150 trades visible
+  while (log.children.length > 150) {
+    log.removeChild(log.lastChild);
+  }
+}
+
+function updateStatus(status) {
+  const dot = document.getElementById('finnhub-dot');
+  const text = document.getElementById('finnhub-status');
+  
+  if (status === 'FINNHUB_CONNECTED') {
+    dot.classList.remove('red');
+    text.textContent = 'FINNHUB: LIVE';
+  } else {
+    dot.classList.add('red');
+    text.textContent = 'FINNHUB: ERROR';
+  }
+}
+
+// Update uptime
+setInterval(() => {
+  const elapsed = Date.now() - startTime;
+  const secs = Math.floor(elapsed / 1000);
+  const mins = Math.floor(secs / 60);
+  const hrs = Math.floor(mins / 60);
+  
+  if (hrs > 0) {
+    document.getElementById('uptime').textContent = `${hrs}h ${mins % 60}m`;
+  } else if (mins > 0) {
+    document.getElementById('uptime').textContent = `${mins}m ${secs % 60}s`;
+  } else {
+    document.getElementById('uptime').textContent = `${secs}s`;
+  }
+}, 1000);
+
+// Connect on load
+window.addEventListener('load', connectWebSocket);
+</script>
+
+</body>
+</html>
