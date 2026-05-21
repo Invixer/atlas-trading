@@ -838,17 +838,6 @@ setInterval(broadcastPortfolioUpdate, 500);
 // Run strategy evaluation every 500ms (2x per second)
 setInterval(evaluateStrategy, 500);
 
-const PORT = process.env.PORT || 3000;
-
-loadData();
-connectFinnhub();
-
-server.listen(PORT, () => {
-  console.log(`[ATLAS] 🚀 Server running on http://localhost:${PORT}`);
-  console.log(`[ATLAS] Starting capital: $${START_CAPITAL}`);
-  console.log(`[ATLAS] Watching ${watchlist.length} stocks`);
-});
-
 process.on('SIGINT', () => {
   console.log('[ATLAS] Shutting down...');
   saveData();
