@@ -337,10 +337,13 @@ body {
 </div>
 
 <script>
-const WS_URL = `ws://${window.location.hostname}:3000`;
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const host = window.location.host;
+const WS_URL = `${protocol}//${host}`;
+
+console.log('[ATLAS Dashboard] WebSocket URL:', WS_URL);
 let ws = null;
 let startTime = Date.now();
-let lastUpdate = {};
 
 function connectWebSocket() {
   ws = new WebSocket(WS_URL);
@@ -510,6 +513,8 @@ setInterval(() => {
 }, 1000);
 
 // Connect on load
+console.log('[ATLAS Dashboard] Page loaded, connecting WebSocket...');
+connectWebSocket();
 window.addEventListener('load', connectWebSocket);
 </script>
 
